@@ -148,7 +148,7 @@ def despues_de_la_peticion(respuesta):
     if endpoint != "/metrics":
         HTTP_PETICIONES.labels(request.method, endpoint, str(respuesta.status_code)).inc()
         HTTP_LATENCIA.labels(endpoint).observe(time.perf_counter() - g.get("inicio", time.perf_counter()))
-    respuesta.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
+    respuesta.headers["Content-Security-Policy"] = ("default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'")
     respuesta.headers["X-Frame-Options"] = "DENY"
     respuesta.headers["X-Content-Type-Options"] = "nosniff"
     respuesta.headers["Referrer-Policy"] = "no-referrer"
