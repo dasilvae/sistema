@@ -13,6 +13,7 @@ import time
 
 from flask import Flask, Response, g, jsonify, render_template_string, request
 from markupsafe import escape
+from werkzeug.security import check_password_hash
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 app = Flask(__name__)
@@ -20,7 +21,7 @@ app = Flask(__name__)
 ## Clave de la aplicación y credenciales del administrador.
 SECRET_KEY = "SecureDev-2024-clave-super-secreta"
 ADMIN_USUARIO = "admin"
-ADMIN_CLAVE_MD5 = "21232f297a57a5a743894a0e4a801fc3"
+ADMIN_CLAVE_HASH = "pbkdf2:sha256:...pega aquí el hash completo..."
 app.config["SECRET_KEY"] = SECRET_KEY
 
 ## Versión desplegada: la inyecta el pipeline (1.0.<build>+<commit>). Sirve para la trazabilidad.
@@ -220,7 +221,7 @@ def login():
     """
     usuario = request.form.get("usuario", "")
     clave = request.form.get("clave", "")
-    if usuario == ADMIN_USUARIO and hashlib.md5(clave.encode()).hexdigest() == ADMIN_CLAVE_MD5:
+    if usuario == ADMIN_USUARIO and check_password_hash(ADMIN_CLAVE_HASH, clave):
         LOGIN_EXITOSOS.inc()
         return jsonify({"mensaje": "Bienvenido, administrador"})
     LOGIN_FALLIDOS.inc()
