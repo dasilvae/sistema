@@ -21,7 +21,7 @@ app = Flask(__name__)
 ## Clave de la aplicación y credenciales del administrador.
 SECRET_KEY = "SecureDev-2024-clave-super-secreta"
 ADMIN_USUARIO = "admin"
-ADMIN_CLAVE_HASH = "pbkdf2:sha256:...pega aquí el hash completo..."
+ADMIN_CLAVE_HASH = "pbkdf2:sha256:260000$DcqktW0wdz2wjzZN$43ec90b3d118ca39bcc77886e266b8266cc047694503a5b911a34dc6fcbeff35"
 app.config["SECRET_KEY"] = SECRET_KEY
 
 ## Versión desplegada: la inyecta el pipeline (1.0.<build>+<commit>). Sirve para la trazabilidad.
