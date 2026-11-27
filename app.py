@@ -12,7 +12,7 @@ import secrets
 import sqlite3
 import time
 
-from flask import Flask, Response, g, jsonify, render_template_string, request
+from flask import Flask, Response, g, jsonify, render_template_string, request, session
 from markupsafe import escape
 from werkzeug.security import check_password_hash
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
@@ -24,6 +24,18 @@ SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_urlsafe(32)
 ADMIN_USUARIO = os.environ.get("ADMIN_USUARIO", "admin")
 ADMIN_CLAVE_HASH = os.environ.get("ADMIN_CLAVE_HASH", "")
 app.config["SECRET_KEY"] = SECRET_KEY
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+
+def token_csrf():
+    """!
+    @brief Devuelve el token anti-CSRF de la sesión (lo crea si no existe).
+    @return Token aleatorio en texto.
+    """
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
+
 
 ## Versión desplegada: la inyecta el pipeline (1.0.<build>+<commit>). Sirve para la trazabilidad.
 VERSION = os.environ.get("APP_VERSION", "dev")
@@ -70,6 +82,7 @@ PORTADA = """<!doctype html>
 </form>
 <h2>Acceso administrador</h2>
 <form action="/login" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input name="usuario" value="admin"> <input name="clave" type="password" value="">
   <button type="submit">Entrar</button>
 </form>
@@ -135,6 +148,10 @@ def despues_de_la_peticion(respuesta):
     if endpoint != "/metrics":
         HTTP_PETICIONES.labels(request.method, endpoint, str(respuesta.status_code)).inc()
         HTTP_LATENCIA.labels(endpoint).observe(time.perf_counter() - g.get("inicio", time.perf_counter()))
+    respuesta.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
+    respuesta.headers["X-Frame-Options"] = "DENY"
+    respuesta.headers["X-Content-Type-Options"] = "nosniff"
+    respuesta.headers["Referrer-Policy"] = "no-referrer"
     return respuesta
 
 
@@ -144,7 +161,7 @@ def portada():
     @brief Portada HTML con enlaces y formularios del sistema.
     @return Página HTML.
     """
-    return render_template_string(PORTADA, version=VERSION)
+    return render_template_string(PORTADA, version=VERSION, csrf_token=token_csrf())
 
 
 @app.route("/hello")
@@ -220,6 +237,9 @@ def login():
     @brief Valida las credenciales del administrador enviadas por formulario.
     @return JSON con el resultado; 401 si las credenciales no son válidas.
     """
+    enviado = request.form.get("csrf_token", "")
+    if not secrets.compare_digest(enviado.encode(), session.get("csrf_token", "").encode()):
+        return jsonify({"error": "Token CSRF inválido"}), 403
     usuario = request.form.get("usuario", "")
     clave = request.form.get("clave", "")
     if usuario == ADMIN_USUARIO and check_password_hash(ADMIN_CLAVE_HASH, clave):
@@ -242,4 +262,4 @@ def metrics():
 iniciar_db()
 
 if __name__ == "__main__":
-        app.run(host=os.environ.get("APP_HOST", "127.0.0.1"), port=5000, debug=False)
+    app.run(host=os.environ.get("APP_HOST", "127.0.0.1"), port=5000, debug=False)
