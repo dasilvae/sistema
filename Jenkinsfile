@@ -69,6 +69,22 @@ pipeline {
             }
         }
         // >>> [ZAP]: aquí van las etapas "Deploy Staging" y "DAST - OWASP ZAP"
+        stage('Deploy Staging') {
+            steps {
+                withCredentials([string(credentialsId: 'admin-clave-hash', variable: 'ADMIN_CLAVE_HASH'),
+                                 string(credentialsId: 'app-secret-key', variable: 'SECRET_KEY')]) {
+                    sh 'bash scripts/deploy.sh staging 5001'
+                }
+            }
+        }
+
+        stage('DAST - OWASP ZAP') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh 'python3 scripts/zap_scan.py http://jenkins:5001'
+                }
+            }
+        }
 
         stage('Deploy Producción') {
             // >>> [GATE]: aquí va la condición "when" que protege producción
