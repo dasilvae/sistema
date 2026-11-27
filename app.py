@@ -209,6 +209,7 @@ def buscar_alumnos():
     except sqlite3.Error:
         app.logger.exception("Error al buscar alumnos")
         return jsonify({"error": "Error interno al buscar alumnos"}), 500
+    return jsonify([dict(f) for f in filas])
 
 
 @app.route("/login", methods=["POST"])
