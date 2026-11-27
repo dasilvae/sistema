@@ -88,6 +88,7 @@ pipeline {
 
         stage('Deploy Producción') {
             // >>> [GATE]: aquí va la condición "when" que protege producción
+                when { expression { currentBuild.currentResult == 'SUCCESS' } }
                 steps {
                 withCredentials([string(credentialsId: 'admin-clave-hash', variable: 'ADMIN_CLAVE_HASH'),
                                  string(credentialsId: 'app-secret-key', variable: 'SECRET_KEY')]) {
